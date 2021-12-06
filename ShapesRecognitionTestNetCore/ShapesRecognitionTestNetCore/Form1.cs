@@ -24,14 +24,14 @@ namespace ShapesRecognitionTestNetCore
     {
         VideoCapture capture = new VideoCapture(1);
 
-        SerialPort cerialPort = new SerialPort("COM6", 115200);
+        SerialPort cerialPort = new SerialPort("COM8", 115200);
         Mat inputHSV;
 
         public Form1()
         {
             InitializeComponent();
 
-            cerialPort.Open();
+            //        cerialPort.Open();
 
             //cerialPort.DtrEnable = true;
 
@@ -42,17 +42,17 @@ namespace ShapesRecognitionTestNetCore
         {
             this.KeyPreview = true;
 
-            minSVal.Value = 50;    
+            minSVal.Value = 50;
             maxSVal.Value = 255;
 
             minVVal.Value = 50;
             maxVVal.Value = 255;
-            
+
             minCanny.Value = 180;
             maxCanny.Value = 120;
 
             var arr = Enum.GetValues(typeof(DisplayTypes));
-            foreach(var item in arr)
+            foreach (var item in arr)
             {
                 displayTypeBox.Items.Add(item);
             }
@@ -111,7 +111,7 @@ namespace ShapesRecognitionTestNetCore
 
             CvInvoke.Canny(cont1Gray, edges, minc, maxc);
 
-            if(type == DisplayTypes.Canny)
+            if (type == DisplayTypes.Canny)
             {
                 candice.Image = edges.ToBitmap();
                 return;
@@ -148,31 +148,38 @@ namespace ShapesRecognitionTestNetCore
                 if (x > capturedImg.Width / 2)
                 {
                     Text = "To the right";
-                    cerialPort.Write("r\0");
+                    Write("r\0");
                 }
-                else if(x < capturedImg.Width / 2)
+                else if (x < capturedImg.Width / 2)
                 {
                     Text = "To the left";
-                    cerialPort.Write("l\0");
+                    Write("l\0");
                 }
                 else
                 {
                     Text = "Go lorenzo!!";
-                    cerialPort.Write("n\0");
+                    Write("n\0");
                 }
 
                 CvInvoke.DrawContours(capturedImg, contours, i, new MCvScalar(255, 0, 0), 3);
             }
 
             if (!wentIn)
-                {
+            {
                 Text = "";
-                cerialPort.Write("x\0");
+                Write("x\0");
             }
 
             candice.Image = capturedImg.ToBitmap();
-            
+
         }
+        
+        void Write(string message)
+        {
+            if (cerialPort.IsOpen == false) return;
+            cerialPort.Write(message);
+        }
+
 
         Dictionary<int, string> map = new Dictionary<int, string>()
         {
@@ -204,7 +211,7 @@ namespace ShapesRecognitionTestNetCore
 
         private void Form1_KeyDown(object sender, KeyEventArgs e)
         {
-            if(e.KeyCode == Keys.Down)
+            if (e.KeyCode == Keys.Down)
             {
                 cerialPort.Write($"100,200");
             }
@@ -212,13 +219,15 @@ namespace ShapesRecognitionTestNetCore
 
         private void SerialTimer_Tick(object sender, EventArgs e)
         {
+            if (cerialPort.IsOpen == false) return;
+
             richTextBox1.Clear();
 
             string msg = "";
             while (cerialPort.BytesToRead > 0)
             {
                 char cur = (char)cerialPort.ReadChar();
-                if(cur == '\0')
+                if (cur == '\0')
                 {
                     richTextBox1.AppendText(msg + "\n");
                     msg = "";
