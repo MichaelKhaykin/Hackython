@@ -108,6 +108,7 @@ namespace ShapesRecognitionTestNetCore
                 return;
             }
 
+            //Skipping this in the python port, if shit doesn't work maybe this is the reason!
             Mat blurred = new Mat();
             CvInvoke.GaussianBlur(cont1Gray, blurred, new Size(15, 15), 0, 0, BorderType.Default);
 
