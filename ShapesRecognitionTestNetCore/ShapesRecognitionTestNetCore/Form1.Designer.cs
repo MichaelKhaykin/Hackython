@@ -49,6 +49,10 @@ namespace ShapesRecognitionTestNetCore
             this.displayTypeBox = new System.Windows.Forms.ComboBox();
             this.SerialTimer = new System.Windows.Forms.Timer(this.components);
             this.richTextBox1 = new System.Windows.Forms.RichTextBox();
+            this.maxHue = new System.Windows.Forms.NumericUpDown();
+            this.label8 = new System.Windows.Forms.Label();
+            this.minHueVal = new System.Windows.Forms.NumericUpDown();
+            this.MinHue = new System.Windows.Forms.Label();
             ((System.ComponentModel.ISupportInitialize)(this.minSVal)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.maxSVal)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.minVVal)).BeginInit();
@@ -57,12 +61,14 @@ namespace ShapesRecognitionTestNetCore
             ((System.ComponentModel.ISupportInitialize)(this.minCanny)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.minAreaBox)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.candice)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.maxHue)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.minHueVal)).BeginInit();
             this.SuspendLayout();
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(794, 12);
+            this.label1.Location = new System.Drawing.Point(950, 12);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(109, 20);
             this.label1.TabIndex = 3;
@@ -70,7 +76,7 @@ namespace ShapesRecognitionTestNetCore
             // 
             // minSVal
             // 
-            this.minSVal.Location = new System.Drawing.Point(909, 10);
+            this.minSVal.Location = new System.Drawing.Point(1065, 10);
             this.minSVal.Maximum = new decimal(new int[] {
             255,
             0,
@@ -82,7 +88,7 @@ namespace ShapesRecognitionTestNetCore
             // 
             // maxSVal
             // 
-            this.maxSVal.Location = new System.Drawing.Point(909, 45);
+            this.maxSVal.Location = new System.Drawing.Point(1065, 45);
             this.maxSVal.Maximum = new decimal(new int[] {
             255,
             0,
@@ -100,7 +106,7 @@ namespace ShapesRecognitionTestNetCore
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(794, 47);
+            this.label2.Location = new System.Drawing.Point(950, 47);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(112, 20);
             this.label2.TabIndex = 5;
@@ -108,7 +114,7 @@ namespace ShapesRecognitionTestNetCore
             // 
             // minVVal
             // 
-            this.minVVal.Location = new System.Drawing.Point(909, 80);
+            this.minVVal.Location = new System.Drawing.Point(1065, 80);
             this.minVVal.Maximum = new decimal(new int[] {
             255,
             0,
@@ -121,7 +127,7 @@ namespace ShapesRecognitionTestNetCore
             // label3
             // 
             this.label3.AutoSize = true;
-            this.label3.Location = new System.Drawing.Point(794, 82);
+            this.label3.Location = new System.Drawing.Point(950, 82);
             this.label3.Name = "label3";
             this.label3.Size = new System.Drawing.Size(77, 20);
             this.label3.TabIndex = 7;
@@ -129,7 +135,7 @@ namespace ShapesRecognitionTestNetCore
             // 
             // maxVVal
             // 
-            this.maxVVal.Location = new System.Drawing.Point(909, 116);
+            this.maxVVal.Location = new System.Drawing.Point(1065, 116);
             this.maxVVal.Maximum = new decimal(new int[] {
             255,
             0,
@@ -147,7 +153,7 @@ namespace ShapesRecognitionTestNetCore
             // label4
             // 
             this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(794, 118);
+            this.label4.Location = new System.Drawing.Point(950, 118);
             this.label4.Name = "label4";
             this.label4.Size = new System.Drawing.Size(80, 20);
             this.label4.TabIndex = 9;
@@ -155,7 +161,7 @@ namespace ShapesRecognitionTestNetCore
             // 
             // maxCanny
             // 
-            this.maxCanny.Location = new System.Drawing.Point(912, 191);
+            this.maxCanny.Location = new System.Drawing.Point(1068, 191);
             this.maxCanny.Maximum = new decimal(new int[] {
             255,
             0,
@@ -173,7 +179,7 @@ namespace ShapesRecognitionTestNetCore
             // label5
             // 
             this.label5.AutoSize = true;
-            this.label5.Location = new System.Drawing.Point(797, 193);
+            this.label5.Location = new System.Drawing.Point(953, 193);
             this.label5.Name = "label5";
             this.label5.Size = new System.Drawing.Size(84, 20);
             this.label5.TabIndex = 13;
@@ -181,7 +187,7 @@ namespace ShapesRecognitionTestNetCore
             // 
             // minCanny
             // 
-            this.minCanny.Location = new System.Drawing.Point(912, 155);
+            this.minCanny.Location = new System.Drawing.Point(1068, 155);
             this.minCanny.Maximum = new decimal(new int[] {
             255,
             0,
@@ -194,7 +200,7 @@ namespace ShapesRecognitionTestNetCore
             // label6
             // 
             this.label6.AutoSize = true;
-            this.label6.Location = new System.Drawing.Point(797, 157);
+            this.label6.Location = new System.Drawing.Point(953, 157);
             this.label6.Name = "label6";
             this.label6.Size = new System.Drawing.Size(81, 20);
             this.label6.TabIndex = 11;
@@ -202,7 +208,7 @@ namespace ShapesRecognitionTestNetCore
             // 
             // minAreaBox
             // 
-            this.minAreaBox.Location = new System.Drawing.Point(909, 224);
+            this.minAreaBox.Location = new System.Drawing.Point(1065, 224);
             this.minAreaBox.Maximum = new decimal(new int[] {
             10000000,
             0,
@@ -220,7 +226,7 @@ namespace ShapesRecognitionTestNetCore
             // label7
             // 
             this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(794, 226);
+            this.label7.Location = new System.Drawing.Point(950, 226);
             this.label7.Name = "label7";
             this.label7.Size = new System.Drawing.Size(72, 20);
             this.label7.TabIndex = 15;
@@ -266,11 +272,62 @@ namespace ShapesRecognitionTestNetCore
             this.richTextBox1.TabIndex = 20;
             this.richTextBox1.Text = "";
             // 
+            // maxHue
+            // 
+            this.maxHue.Location = new System.Drawing.Point(830, 50);
+            this.maxHue.Maximum = new decimal(new int[] {
+            255,
+            0,
+            0,
+            0});
+            this.maxHue.Name = "maxHue";
+            this.maxHue.Size = new System.Drawing.Size(63, 27);
+            this.maxHue.TabIndex = 24;
+            this.maxHue.Value = new decimal(new int[] {
+            255,
+            0,
+            0,
+            0});
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(715, 52);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(71, 20);
+            this.label8.TabIndex = 23;
+            this.label8.Text = "Max Hue:";
+            // 
+            // minHueVal
+            // 
+            this.minHueVal.Location = new System.Drawing.Point(830, 15);
+            this.minHueVal.Maximum = new decimal(new int[] {
+            255,
+            0,
+            0,
+            0});
+            this.minHueVal.Name = "minHueVal";
+            this.minHueVal.Size = new System.Drawing.Size(63, 27);
+            this.minHueVal.TabIndex = 22;
+            // 
+            // MinHue
+            // 
+            this.MinHue.AutoSize = true;
+            this.MinHue.Location = new System.Drawing.Point(715, 17);
+            this.MinHue.Name = "MinHue";
+            this.MinHue.Size = new System.Drawing.Size(68, 20);
+            this.MinHue.TabIndex = 21;
+            this.MinHue.Text = "Min Hue:";
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1056, 450);
+            this.ClientSize = new System.Drawing.Size(1146, 450);
+            this.Controls.Add(this.maxHue);
+            this.Controls.Add(this.label8);
+            this.Controls.Add(this.minHueVal);
+            this.Controls.Add(this.MinHue);
             this.Controls.Add(this.richTextBox1);
             this.Controls.Add(this.displayTypeBox);
             this.Controls.Add(this.candice);
@@ -301,6 +358,8 @@ namespace ShapesRecognitionTestNetCore
             ((System.ComponentModel.ISupportInitialize)(this.minCanny)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.minAreaBox)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.candice)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.maxHue)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.minHueVal)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -326,6 +385,10 @@ namespace ShapesRecognitionTestNetCore
         private System.Windows.Forms.ComboBox displayTypeBox;
         private System.Windows.Forms.Timer SerialTimer;
         private System.Windows.Forms.RichTextBox richTextBox1;
+        private System.Windows.Forms.NumericUpDown maxHue;
+        private System.Windows.Forms.Label label8;
+        private System.Windows.Forms.NumericUpDown minHueVal;
+        private System.Windows.Forms.Label MinHue;
     }
 }
 

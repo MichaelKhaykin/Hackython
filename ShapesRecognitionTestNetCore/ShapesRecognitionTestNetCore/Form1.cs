@@ -16,6 +16,8 @@ namespace ShapesRecognitionTestNetCore
     {
         HSVInRange,
         GrayScaled,
+        Blurred,
+        Dilated,
         Canny,
         Edges
     }
@@ -24,14 +26,14 @@ namespace ShapesRecognitionTestNetCore
     {
         VideoCapture capture = new VideoCapture(1);
 
-        SerialPort cerialPort = new SerialPort("COM8", 115200);
+        SerialPort cerialPort = new SerialPort("COM6", 115200);
         Mat inputHSV;
 
         public Form1()
         {
             InitializeComponent();
 
-            //        cerialPort.Open();
+            //  cerialPort.Open();
 
             //cerialPort.DtrEnable = true;
 
@@ -41,6 +43,9 @@ namespace ShapesRecognitionTestNetCore
         private void Form1_Load(object sender, EventArgs e)
         {
             this.KeyPreview = true;
+
+            minHueVal.Value = 60;
+            maxHue.Value = 100;
 
             minSVal.Value = 50;
             maxSVal.Value = 255;
@@ -67,7 +72,6 @@ namespace ShapesRecognitionTestNetCore
         {
             var capturedImg = capture.QueryFrame();
 
-
             CvInvoke.GaussianBlur(capturedImg, capturedImg, new Size(3, 3), 1);
 
             Mat capturedImgHSV = new Mat();
@@ -81,7 +85,7 @@ namespace ShapesRecognitionTestNetCore
             int maxv = (int)maxVVal.Value;
 
             Mat rangedHSVMask1 = new Mat();
-            CvInvoke.InRange(capturedImgHSV, (ScalarArray)new MCvScalar(0, mins, minv), (ScalarArray)new MCvScalar(15, maxs, maxv), rangedHSVMask1);
+            CvInvoke.InRange(capturedImgHSV, (ScalarArray)new MCvScalar((int)minHueVal.Value, mins, minv), (ScalarArray)new MCvScalar((int)maxHue.Value, maxs, maxv), rangedHSVMask1);
 
             Mat rangedHSVMask2 = new Mat();
             CvInvoke.InRange(capturedImgHSV, (ScalarArray)new MCvScalar(175, mins, minv), (ScalarArray)new MCvScalar(180, maxs, maxv), rangedHSVMask2);
@@ -101,6 +105,32 @@ namespace ShapesRecognitionTestNetCore
             if (type == DisplayTypes.GrayScaled)
             {
                 candice.Image = cont1Gray.ToBitmap();
+                return;
+            }
+
+            Mat blurred = new Mat();
+            CvInvoke.GaussianBlur(cont1Gray, blurred, new Size(15, 15), 0, 0, BorderType.Default);
+
+            if (type == DisplayTypes.Blurred)
+            {
+                candice.Image = blurred.ToBitmap();
+                return;
+            }
+
+            Mat dilated = new Mat();
+            Mat element = CvInvoke.GetStructuringElement(ElementShape.Ellipse, new Size(3, 3), new Point(-1, -1));
+
+            CvInvoke.Dilate(blurred
+                     , dilated
+                     , element
+                     , new Point(-1, -1)
+                     , 6
+                     , BorderType.Default
+                     , new MCvScalar(0, 0, 0));
+
+            if(type == DisplayTypes.Dilated)
+            {
+                candice.Image = dilated.ToBitmap();
                 return;
             }
 
@@ -173,7 +203,7 @@ namespace ShapesRecognitionTestNetCore
             candice.Image = capturedImg.ToBitmap();
 
         }
-        
+
         void Write(string message)
         {
             if (cerialPort.IsOpen == false) return;
