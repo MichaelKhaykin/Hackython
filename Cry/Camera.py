@@ -4,7 +4,6 @@ import serial
 import time
 import enum
 
-
 class RobotStates(enum.Enum):
     MoveToInitial = 0,
     ScanningPrintedObject = 1,
@@ -13,8 +12,8 @@ class RobotStates(enum.Enum):
     ScanningBanner = 4,
     DeMagnetize = 5,
 
-cap = cv.VideoCapture('/dev/video0')
-arduino = serial.Serial('/dev/ttyUSB0', 115200, timeout=0.1)
+cap : VideoCapture = cv.VideoCapture('/dev/video0')
+arduino : Serial = serial.Serial('/dev/ttyUSB0', 115200, timeout=0.1)
 
 currentRobotState = RobotStates.MoveToInitial
 
@@ -31,14 +30,14 @@ map = {
     4: 'Square',
     15: 'Circle'
 }
-def Write(text):
+def Write(text : str):
     arduino.write(bytes(text, 'utf-8'))
 
-def IsReached():
+def IsReached() -> bool:
     line = arduino.readline()
     return line == b'reached\r\n'
 
-def GetText(points):
+def GetText(points : int) -> str:
     if points in map.keys():
         return map[points]
     if points >= 15:
@@ -114,16 +113,17 @@ MoveToInitialPosition()
 magnetize = False
 
 while True:
-    _, capturedImg = cap.read()
+    _, capturedImg : image = cap.read()
     if capturedImg is None:
         continue
     
     #cv.imshow('original', capturedImg)
     
-    blur = cv.blur(capturedImg, (3, 3))
+    blur : image = cv.blur(capturedImg, (3, 3))
     #cv.imshow('blur', blur)
 
-    capturedImgHSV = cv.cvtColor(blur, cv.COLOR_BGR2HSV)
+    #returns image; converts the blur from BGR color space to grayscale
+    capturedImgHSV : image = cv.cvtColor(blur, cv.COLOR_BGR2HSV) 
 
     minh = cv.getTrackbarPos('Min h', 'mask')
     mins = cv.getTrackbarPos('Min s', 'mask')
@@ -133,13 +133,13 @@ while True:
     maxs = cv.getTrackbarPos('Max s', 'mask')
     maxv = cv.getTrackbarPos('Max v', 'mask')
     
-    mask = cv.inRange(capturedImgHSV, (minh, mins, minv), (maxh, maxs, maxv))
+    mask : list[int] = cv.inRange(capturedImgHSV, (minh, mins, minv), (maxh, maxs, maxv))
     cv.imshow('mask', mask)
 
     grayScale = mask
 
-    kernel = np.ones((5,5), np.uint8)
-    dilate = cv.dilate(grayScale, kernel, iterations=1)
+    kernel : np.ndarray = np.ones((5,5), np.uint8)
+    dilate : image = cv.dilate(grayScale, kernel, iterations=1)
     
     #cv.imshow('dilate', dilate)
 
