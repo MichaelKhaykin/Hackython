@@ -3,7 +3,7 @@ import numpy as np
 import serial
 import time
 import enum
-
+import math
 
 def BuildBlur(capturedImg):
     return cv.blur(capturedImg, (3, 3))
@@ -21,7 +21,7 @@ def BuildMask(hsv):
     maxv = cv.getTrackbarPos('Max v', 'mask')
     
     return cv.inRange(hsv, (minh, mins, minv), (maxh, maxs, maxv))
-
+  
 def BuildDilation(mask):
     kernel = np.ones((5,5), np.uint8)
     dilate = cv.dilate(mask, kernel, iterations=1)
@@ -40,14 +40,30 @@ def BuildContour(canny):
     _, contours, _ = cv.findContours(canny, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
     return contours
 
-def GetText(contour):
+def GetText(contour, mask):
 
     #Last paramater is boolean for if shape is closed
 
-    arcLength = cv.arcLength(contour, True) 
-    approx = cv.approxPolyDP(contour, 0.01 * arcLength, True)
+    arcLength = cv.arcLength(contour, True)
+    approx = cv.approxPolyDP(contour, 0.03 * arcLength, True)
 
     text = PointsToText(len(approx))
+
+    # check if circle, using this instead of approx poly dp since these are not polygons
+    _ ,_,w,_ = cv.boundingRect(contour)
+    closeToPi = arcLength / w
+
+    percentError = abs((math.pi - closeToPi)) / math.pi * 100
+
+    if percentError < 8:
+        return "circle"
+
+    #grab the width of the contour, grab the length of the contour and divide
+    # that value should be close to pi
+
+  #  if circles is not None:
+      #  return circles
+
     return text
 
 def GetMoments(contour):
@@ -75,7 +91,7 @@ class RobotStates(enum.Enum):
     DeMagnetize = 5,
 
 cap = cv.VideoCapture('/dev/video0')
-arduino = serial.Serial('/dev/ttyUSB0', 115200, timeout=0.1)
+arduino = None #serial.Serial('/dev/ttyUSB0', 115200, timeout=0.1)
 
 currentRobotState = RobotStates.MoveToInitial
 
@@ -109,7 +125,7 @@ def MoveToInitialPosition():
 def init():
     cv.namedWindow('mask')
     cv.createTrackbar('Min h', 'mask', 0, 255, empty)
-    cv.setTrackbarPos('Min h', 'mask', 60)
+    cv.setTrackbarPos('Min h', 'mask', 50)
 
     cv.createTrackbar('Max h', 'mask', 0, 255, empty)
     cv.setTrackbarPos('Max h', 'mask', 100)
@@ -133,7 +149,7 @@ def init():
     cv.setTrackbarPos('Max canny', 'mask', 120)
 
     cv.namedWindow('contour')
-    cv.createTrackbar('Min area', 'contour', 0, 255, empty)
+    cv.createTrackbar('Min area', 'contour', 0, 500, empty)
     cv.setTrackbarPos('Min area', 'contour', 100)
 
 
@@ -146,6 +162,10 @@ while True:
     
     if currentRobotState == RobotStates.MoveToInitial:
         
+        if arduino is None:
+            currentRobotState = RobotStates.ScanningPrintedObject
+            continue
+
         if IsReached():
             currentRobotState = RobotStates.ScanningPrintedObject
             continue
@@ -163,11 +183,14 @@ while True:
         cv.imshow('mask', mask)
         dilated = BuildDilation(mask)
         canny = BuildCanny(dilated)
+        
         contours = BuildContour(canny)
+        contourImg = capturedImg.copy() #draw contours over original image (made a copy so we don't modify original)
 
         minArea = cv.getTrackbarPos('Min area', 'contour')
 
         shapeDetected = False
+        shapeDet = "None"
 
         for i in range(0, len(contours)):
             
@@ -178,16 +201,25 @@ while True:
             
             wentIn = True
 
-            text = GetText(cnt)
+            text = GetText(cnt, mask)
             if text == "":
                 continue
+
             shapeDetected = True
             shapeDet = text
+
+            cv.drawContours(contourImg, contours, i, (0, 255, 0), 2)
+    
             break
  
         if shapeDetected:
             #currentRobotState = RobotStates.Magnetize
-            print(f"detected {shapeDet}")
+            pass
+
+        cv.imshow('contour', contourImg)
+
+
+        print(f"detected {shapeDet}")
         
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
