@@ -5,6 +5,67 @@ import time
 import enum
 
 
+def BuildBlur(capturedImg):
+    return cv.blur(capturedImg, (3, 3))
+
+def BuildHSV(blur):
+    return cv.cvtColor(blur, cv.COLOR_BGR2HSV)
+
+def BuildMask(hsv):
+    minh = cv.getTrackbarPos('Min h', 'mask')
+    mins = cv.getTrackbarPos('Min s', 'mask')
+    minv = cv.getTrackbarPos('Min v', 'mask')
+    
+    maxh = cv.getTrackbarPos('Max h', 'mask')
+    maxs = cv.getTrackbarPos('Max s', 'mask')
+    maxv = cv.getTrackbarPos('Max v', 'mask')
+    
+    return cv.inRange(hsv, (minh, mins, minv), (maxh, maxs, maxv))
+
+def BuildDilation(mask):
+    kernel = np.ones((5,5), np.uint8)
+    dilate = cv.dilate(mask, kernel, iterations=1)
+    
+    return dilate
+
+def BuildCanny(dilated):
+    mincanny = cv.getTrackbarPos('Min canny', 'mask')
+    maxcanny = cv.getTrackbarPos('Max canny', 'mask')
+    
+    canny = cv.Canny(dilated, mincanny, maxcanny)
+    
+    return canny
+
+def BuildContour(canny):
+    _, contours, _ = cv.findContours(canny, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+    return contours
+
+def GetText(contour):
+
+    #Last paramater is boolean for if shape is closed
+
+    arcLength = cv.arcLength(contour, True) 
+    approx = cv.approxPolyDP(contour, 0.01 * arcLength, True)
+
+    text = PointsToText(len(approx))
+    return text
+
+def GetMoments(contour):
+    moments = cv.moments(contour)
+    x = int(moments['m10'] / moments['m00'])
+    y = int(moments['m01'] / moments['m00'])
+    return (x, y)
+
+
+#cv.Mat.BuildBlur = BuildBlur
+#cv.Mat.BuildHSV = BuildHSV
+#cv.Mat.BuildMask = BuildMask
+#cv.Mat.BuildDilation = BuildDilation
+#cv.Mat.BuildCanny = BuildCanny
+#cv.Mat.BuildContour = BuildContour
+
+
+
 class RobotStates(enum.Enum):
     MoveToInitial = 0,
     ScanningPrintedObject = 1,
@@ -26,11 +87,7 @@ map = {
 
 def empty(val):
     pass
-map = {
-    3: 'Triangle',
-    4: 'Square',
-    15: 'Circle'
-}
+
 def Write(text):
     arduino.write(bytes(text, 'utf-8'))
 
@@ -38,7 +95,7 @@ def IsReached():
     line = arduino.readline()
     return line == b'reached\r\n'
 
-def GetText(points):
+def PointsToText(points):
     if points in map.keys():
         return map[points]
     if points >= 15:
@@ -80,7 +137,10 @@ def init():
     cv.setTrackbarPos('Min area', 'contour', 100)
 
 
-time.sleep(2)
+time.sleep(2) #slight delay for stuff to initialize on the hardware side
+init()
+
+shapeDet = ""
 
 while True:
     
@@ -89,17 +149,51 @@ while True:
         if IsReached():
             currentRobotState = RobotStates.ScanningPrintedObject
             continue
-        
         MoveToInitialPosition()
-
-        pass
 
     elif currentRobotState == RobotStates.ScanningPrintedObject:
         
-        print("Yay")
+        _, capturedImg = cap.read()
+        if capturedImg is None:
+            continue
+
+        blur = BuildBlur(capturedImg)
+        hsv = BuildHSV(blur)
+        mask = BuildMask(hsv)
+        cv.imshow('mask', mask)
+        dilated = BuildDilation(mask)
+        canny = BuildCanny(dilated)
+        contours = BuildContour(canny)
+
+        minArea = cv.getTrackbarPos('Min area', 'contour')
+
+        shapeDetected = False
+
+        for i in range(0, len(contours)):
+            
+            cnt = contours[i]
+
+            if cv.contourArea(cnt) < minArea:
+                continue
+            
+            wentIn = True
+
+            text = GetText(cnt)
+            if text == "":
+                continue
+            shapeDetected = True
+            shapeDet = text
+            break
+ 
+        if shapeDetected:
+            #currentRobotState = RobotStates.Magnetize
+            print(f"detected {shapeDet}")
         
-        pass
+        if cv.waitKey(1) & 0xFF == ord('q'):
+            break
+
     elif currentRobotState == RobotStates.Magnetize:
+        print(f"In magnetize, detected {shapeDet}")
         pass
     elif currentRobotState == RobotStates.MovingToSetPoint:
         pass
@@ -108,50 +202,35 @@ while True:
     elif currentRobotState == RobotStates.DeMagnetize:
         pass
 
+cv.destroyAllWindows()
 
-init()
-MoveToInitialPosition()
 magnetize = False
 
-while True:
+while False:
     _, capturedImg = cap.read()
+    
     if capturedImg is None:
         continue
     
     #cv.imshow('original', capturedImg)
     
-    blur = cv.blur(capturedImg, (3, 3))
+    blur = BuildBlur(capturedImg)
     #cv.imshow('blur', blur)
 
-    capturedImgHSV = cv.cvtColor(blur, cv.COLOR_BGR2HSV)
+    hsv = BuildHSV(blur)
+    #cv.imshow('hsv', hsv)
 
-    minh = cv.getTrackbarPos('Min h', 'mask')
-    mins = cv.getTrackbarPos('Min s', 'mask')
-    minv = cv.getTrackbarPos('Min v', 'mask')
-    
-    maxh = cv.getTrackbarPos('Max h', 'mask')
-    maxs = cv.getTrackbarPos('Max s', 'mask')
-    maxv = cv.getTrackbarPos('Max v', 'mask')
-    
-    mask = cv.inRange(capturedImgHSV, (minh, mins, minv), (maxh, maxs, maxv))
+    mask = BuildMask(hsv)
     cv.imshow('mask', mask)
 
-    grayScale = mask
+    dilated = BuildDilation(mask)
+    #cv.imshow('dilate', dilated)
 
-    kernel = np.ones((5,5), np.uint8)
-    dilate = cv.dilate(grayScale, kernel, iterations=1)
-    
-    #cv.imshow('dilate', dilate)
-
-    mincanny = cv.getTrackbarPos('Min canny', 'mask')
-    maxcanny = cv.getTrackbarPos('Max canny', 'mask')
-    
-    canny = cv.Canny(dilate, mincanny, maxcanny)
+    canny = BuildCanny(dilated)
     #cv.imshow('canny', canny)
 
-    _, contours, _ = cv.findContours(canny, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-
-    contourImg = capturedImg.copy()
+    contours = BuildContours(canny)
+    contourImg = capturedImg.copy() #draw contours over original image (made a copy so we don't modify original)
     cv.drawContours(contourImg, contours, -1, (0, 255, 0), 2)
 
     #cv.imshow('contour', contourImg)
@@ -172,35 +251,20 @@ while True:
         
         wentIn = True
 
-        arcLength = cv.arcLength(cnt, closed)
-        approx = cv.approxPolyDP(cnt, 0.01 * arcLength, closed)
-
-        moments = cv.moments(cnt)
-        x = int(moments['m10'] / moments['m00'])
-        y = int(moments['m01'] / moments['m00'])
-
-        text = GetText(len(approx))
+        text = GetText(cnt)
         if text == "":
             continue
+        
+        x, y = GetMoments(cnt)
 
         fullText = f"{text} ({x}, {y})"
         cv.putText(shapeContours, fullText, (x, y), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0))
 
-        Text = ""
-
         height, width, channel = capturedImg.shape
 
-        magnetize = True
-    
         cv.drawContours(shapeContours, contours, i, (255, 0, 0), 3)
 
     cv.imshow('Shapes contour', shapeContours)
-
-    #if magnetize:
-        #Write('mn\n')
-    #else:
-        #Write('mf\n')
-        
 
     if cv.waitKey(1) & 0xFF == ord('q'):
         break
