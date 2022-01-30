@@ -32,22 +32,28 @@ namespace InverseKinematicsDemo
 
         Point msClickLocation;
 
-        SerialPort serial = new SerialPort("COM6", 115200);
+        SerialPort serial = new SerialPort("COM7", 115200);
 
         double firstArmLength;
         double secondArmLength;
 
 
-        List<(int angle1, int angle2)> m = new List<(int angle1, int angle2)>();
+        List<Point> m = new List<Point>();
+        List<(Point point, double angleS, double angleE)> pointLog = new();
 
         float armLengthInInches = 5.5f;
         float arm2LengthInInches = 8.5f;
+
+
         public Form1()
         {
             InitializeComponent();
 
-         //   serial.Open();
-         //   serial.Write("0,0,4000\n");
+       //     Submit.Click += Submit_Click;
+
+            serial.Open();
+            serial.Write("0,0,4000\n");
+            serial.Write("mn\n");
             ;
 
             firstArmLength = armLengthInInches * inchesToPixels;
@@ -83,7 +89,7 @@ namespace InverseKinematicsDemo
 
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
-            System.IO.File.WriteAllLines("SetPoints.txt", m.Select(x => x.ToString()).ToArray());
+          //  System.IO.File.WriteAllLines("SetPoints.txt", m.Select(x => x.ToString()).ToArray());
         }
 
         private void Img_MouseClick(object sender, MouseEventArgs e)
@@ -128,6 +134,18 @@ namespace InverseKinematicsDemo
             double q2 = Math.PI - LawOfCosines(dist, firstArmLength, secondArmLength);
             double q1 = Math.Atan2(y, x) - Math.Atan2(secondArmLength * Math.Sin(q2), firstArmLength + secondArmLength * Math.Cos(q2));
 
+            //Convert inner goal angle to be half a rotation or closer
+            while ((curA - q1) > Math.PI)
+            {
+                q1 += 2 * Math.PI;
+            }
+
+            while((curA - q1) < -Math.PI)
+            {
+                q1 -= 2 * Math.PI;
+            }
+
+            pointLog.Add((pos, q1, q2));
             return (q1, q2);
         }
 
@@ -211,12 +229,27 @@ namespace InverseKinematicsDemo
 
         private void button1_Click(object sender, EventArgs e)
         {
-            m.Add(((int)(goalA * 180 / Math.PI), (int)(goalB * 180 / Math.PI)));
+            m.Add(new Point((int)(goalA * 180 / Math.PI), (int)(goalB * 180 / Math.PI)));
         }
 
         private void Submit_Click(object sender, EventArgs e)
         {
+            System.IO.File.WriteAllText("Points.txt", System.Text.Json.JsonSerializer.Serialize(m));
+        }
 
+        private void button2_Click(object sender, EventArgs e)
+        {
+            serial.Write("mn\n");
+        }
+
+        private void button3_Click(object sender, EventArgs e)
+        {
+            serial.Write("mf\n");
+        }
+
+        private void button4_Click(object sender, EventArgs e)
+        {
+            serial.Write(anglebox.Text + "\n");
         }
     }
 }

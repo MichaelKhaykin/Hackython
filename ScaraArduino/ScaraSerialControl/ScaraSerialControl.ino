@@ -156,7 +156,7 @@ void loop() {
     }
     moving = false;
     if (millis() - stopTime > 500) {
-      digitalWrite(enPin, HIGH);
+      //digitalWrite(enPin, HIGH);
     }
   }
 }
