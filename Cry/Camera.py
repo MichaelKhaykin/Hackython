@@ -56,7 +56,7 @@ def GetText(contour, mask):
     percentError = abs((math.pi - closeToPi)) / math.pi * 100
 
     if percentError < 8:
-        return "circle"
+        return "Circle"
 
     #grab the width of the contour, grab the length of the contour and divide
     # that value should be close to pi
@@ -86,18 +86,24 @@ class RobotStates(enum.Enum):
     MoveToInitial = 0,
     ScanningPrintedObject = 1,
     Magnetize = 2,
-    MovingToSetPoint = 3,
+    WaitForTom = 10,
+    MoveToSetPoint = 3,
     ScanningBanner = 4,
-    DeMagnetize = 5,
+    MoveToCup = 5,
+    DeMagnetize = 6,
+    Reset1 = 7,
+    Reset2 = 8
 
 cap = cv.VideoCapture('/dev/video0')
-arduino = None #serial.Serial('/dev/ttyUSB0', 115200, timeout=0.1)
+arduino = serial.Serial('/dev/ttyUSB0', 115200, timeout=0.1)
+#arduino = None
 
 currentRobotState = RobotStates.MoveToInitial
 
 map = {
     3: 'Triangle',
     4: 'Square',
+    5: "Star",
     15: 'Circle'
 }
 
@@ -105,9 +111,18 @@ def empty(val):
     pass
 
 def Write(text):
+
+    if arduino is None:
+        return
+
+    #arduino.flushInput()
     arduino.write(bytes(text, 'utf-8'))
 
 def IsReached():
+
+    if arduino is None:
+        return
+
     line = arduino.readline()
     return line == b'reached\r\n'
 
@@ -120,7 +135,7 @@ def PointsToText(points):
 
 #9500 is max height
 def MoveToInitialPosition():
-    Write('0,0,2000\n')
+    Write('0,0,4500\n')
 
 def init():
     cv.namedWindow('mask')
@@ -149,14 +164,67 @@ def init():
     cv.setTrackbarPos('Max canny', 'mask', 120)
 
     cv.namedWindow('contour')
-    cv.createTrackbar('Min area', 'contour', 0, 500, empty)
+    cv.createTrackbar('Min area', 'contour', 1000, 2000, empty)
     cv.setTrackbarPos('Min area', 'contour', 100)
 
+def GetShapeScanned():
+    _, capturedImg = cap.read()
+    if capturedImg is None:
+        return ""
 
+    rotatedImage = cv.rotate(capturedImg, 0)
+    capturedImg = cv.rotate(rotatedImage, 0)
+
+    blur = BuildBlur(capturedImg)
+    hsv = BuildHSV(blur)
+    mask = BuildMask(hsv)
+    cv.imshow('mask', mask)
+    dilated = BuildDilation(mask)
+    canny = BuildCanny(dilated)
+    
+    contours = BuildContour(canny)
+    contourImg = capturedImg.copy() #draw contours over original image (made a copy so we don't modify original)
+
+    minArea = cv.getTrackbarPos('Min area', 'contour')
+
+    shapeDet = "None"
+
+    for i in range(0, len(contours)):
+        
+        cnt = contours[i]
+
+        if cv.contourArea(cnt) < minArea:
+            continue
+
+        text = GetText(cnt, mask)
+        if text == "":
+            continue
+
+        shapeDet = text
+
+        cv.drawContours(contourImg, contours, i, (0, 255, 0), 2)    
+
+        break
+
+    cv.imshow('contour', contourImg)
+    return shapeDet
+
+shapeCount = {
+    "Circle": 0,
+    "Triangle": 0,
+    "Square": 0,
+    "Star": 0
+}
+ 
 time.sleep(2) #slight delay for stuff to initialize on the hardware side
 init()
 
-shapeDet = ""
+camPositions = [(31, 73), (83, 67), (120, 80), (172, 74)]
+cupPositions = [(44, 61), (88, 67), (134, 65), (184, 62)]
+tom = 0
+
+threeDShapeDetected = None
+
 
 while True:
     
@@ -167,73 +235,133 @@ while True:
             continue
 
         if IsReached():
+
+            #reset shape count
+            shapeCount = {
+                "None": 0,
+                "Circle": 0,
+                "Triangle": 0,
+                "Square": 0,
+                "Star": 0
+            }
+
             currentRobotState = RobotStates.ScanningPrintedObject
             continue
         MoveToInitialPosition()
 
     elif currentRobotState == RobotStates.ScanningPrintedObject:
         
-        _, capturedImg = cap.read()
-        if capturedImg is None:
-            continue
+        shapeDetected = GetShapeScanned()
 
-        blur = BuildBlur(capturedImg)
-        hsv = BuildHSV(blur)
-        mask = BuildMask(hsv)
-        cv.imshow('mask', mask)
-        dilated = BuildDilation(mask)
-        canny = BuildCanny(dilated)
-        
-        contours = BuildContour(canny)
-        contourImg = capturedImg.copy() #draw contours over original image (made a copy so we don't modify original)
+        if shapeDetected != '' and shapeDetected != "None":
 
-        minArea = cv.getTrackbarPos('Min area', 'contour')
+            print(f"detected {shapeDetected}")
 
-        shapeDetected = False
-        shapeDet = "None"
+            shapeCount[shapeDetected] += 1
+            if shapeCount[shapeDetected] >= 30:
+                currentRobotState = RobotStates.Magnetize
 
-        for i in range(0, len(contours)):
-            
-            cnt = contours[i]
+                tom = 0
 
-            if cv.contourArea(cnt) < minArea:
-                continue
-            
-            wentIn = True
+                threeDShapeDetected = shapeDetected
 
-            text = GetText(cnt, mask)
-            if text == "":
-                continue
-
-            shapeDetected = True
-            shapeDet = text
-
-            cv.drawContours(contourImg, contours, i, (0, 255, 0), 2)
-    
-            break
- 
-        if shapeDetected:
-            #currentRobotState = RobotStates.Magnetize
-            pass
-
-        cv.imshow('contour', contourImg)
-
-
-        print(f"detected {shapeDet}")
+                shapeCount = {
+                    "None": 0,
+                    "Circle": 0,
+                    "Triangle": 0,
+                    "Square": 0,
+                    "Star": 0
+                }
         
         if cv.waitKey(1) & 0xFF == ord('q'):
             break
 
     elif currentRobotState == RobotStates.Magnetize:
-        print(f"In magnetize, detected {shapeDet}")
-        pass
-    elif currentRobotState == RobotStates.MovingToSetPoint:
-        pass
-    elif currentRobotState == RobotStates.ScanningBanner:
-        pass
-    elif currentRobotState == RobotStates.DeMagnetize:
-        pass
+        
+        for i in range(0, 3):
+            Write("mn\n")
+            
+        print("Magentized")
+        currentRobotState = RobotStates.WaitForTom
+        
+    elif currentRobotState == RobotStates.WaitForTom:
 
+        time.sleep(3)
+        currentRobotState = RobotStates.MoveToSetPoint
+        
+
+    elif currentRobotState == RobotStates.MoveToSetPoint:
+
+        (a1, a2) = camPositions[tom]
+        Write(str(a1) + "," + str(a2) + "\n")
+
+        if IsReached():
+            currentRobotState = RobotStates.ScanningBanner
+
+    elif currentRobotState == RobotStates.ScanningBanner:
+        
+        shapeDetected = GetShapeScanned()
+
+        if shapeDetected != "":
+        
+            print(f"detected {shapeDetected}")
+        
+            shapeCount[shapeDetected] += 1
+            if shapeCount[shapeDetected] >= 15:
+                
+                if shapeDetected == threeDShapeDetected:
+                    currentRobotState = RobotStates.MoveToCup
+                else:
+                    currentRobotState = RobotStates.MoveToSetPoint
+                    tom += 1
+    
+                shapeCount = {
+                    "None": 0,
+                    "Circle": 0,
+                    "Triangle": 0,
+                    "Square": 0,
+                    "Star": 0
+                }
+
+    
+        if cv.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    elif currentRobotState == RobotStates.MoveToCup:
+        
+        (a1, a2) = cupPositions[tom]
+        Write(str(a1) + "," + str(a2) + "\n")
+
+        if IsReached():
+            currentRobotState = RobotStates.DeMagnetize
+            tom += 1
+            time.sleep(50 / 1000)
+
+
+    elif currentRobotState == RobotStates.DeMagnetize:
+
+        for i in range(0, 3):
+            Write("mf\n")
+            
+        print("DeMagentized")
+        currentRobotState = RobotStates.Reset1
+
+    elif currentRobotState == RobotStates.Reset1:
+        
+        Write("0, 90\n")
+        
+        if(IsReached()):
+            currentRobotState = RobotStates.Reset2
+            time.sleep(50 / 1000)
+
+    elif currentRobotState == RobotStates.Reset2:
+
+        Write("0, 0\n")
+            
+        if(IsReached()):
+            currentRobotState = RobotStates.ScanningPrintedObject
+
+    
 cv.destroyAllWindows()
 
 magnetize = False
